@@ -4,6 +4,7 @@ const { snippetRouter } = require('./routes/snippet');
 const { userRouter } = require('./routes/user');
 const { default: mongoose } = require('mongoose');
 const dotenv = require('dotenv');
+const Snippet = require('./models/snippet');
 
 dotenv.config();
 const app = express();
@@ -18,7 +19,8 @@ dns.setServers([
 ]);
 const DB_URL = process.env.DB_URL;
 const PORT = process.env.PORT;
-mongoose.connect(DB_URL).then(()=>{
+mongoose.connect(DB_URL).then(async()=>{
+    await Snippet.syncIndexes();
     app.listen(PORT,()=>{
         console.log(`Server started at address: http://localhost:${PORT}`);
     })

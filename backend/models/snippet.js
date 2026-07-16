@@ -69,4 +69,13 @@ const snippetSchema = new mongoose.Schema(
   },
 );
 
+snippetSchema.index({
+  title: "text",
+  description: "text",
+  tags: "text"
+},
+{
+  language_override: "none",
+});
+
 module.exports = mongoose.model("Snippet", snippetSchema);

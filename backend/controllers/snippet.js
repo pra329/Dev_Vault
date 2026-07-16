@@ -46,3 +46,31 @@ exports.postSnippet = async(req, res, next) => {
     })
   }
 };
+
+exports.searchSnippet = async(req,res,next) => {
+  try {
+    const { q } = req.query;
+    if(!q) {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required"
+      });
+    }
+    const snippets = await Snippet.find({
+      $text:{
+        $search: q
+      }
+    });
+    return res.status(200).json({
+      success: true,
+      data: snippets
+    });
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to search snippets",
+      error: err.message
+    })
+  }
+};
