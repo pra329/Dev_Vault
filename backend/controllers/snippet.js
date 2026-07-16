@@ -74,3 +74,50 @@ exports.searchSnippet = async(req,res,next) => {
     })
   }
 };
+
+exports.searchById = async(req,res,next) => {
+  try {
+    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const id = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid snippet ID",
+      });
+    }
+    const snippet = await Snippet.findById(id);
+    if(!snippet) {
+      return res.status(404).json({
+        success: false,
+        message: "Snippet does not found"
+      });
+    }
+    if(snippet.isPublic) {
+      return res.status(200).json({
+        success: true,
+        data: snippet
+      })
+    }
+    else {
+      if(DUMMY_USER_ID === snippet.userId.toString()) {
+        return res.status(200).json({
+          success: true,
+          data: snippet
+        });
+      }
+      else {
+        return res.status(403).json({
+          success: false,
+          message: "Can not return snippet because owner is someone else",
+        })
+      }
+    }
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch snippet by id",
+      error: err.message
+    })
+  }
+}
