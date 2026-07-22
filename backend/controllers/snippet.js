@@ -1,6 +1,7 @@
-const { default: mongoose } = require("mongoose");
+const { default: mongoose, mongo } = require("mongoose");
 const Snippet = require("../models/snippet");
 
+// Search snippet on the basis of language, type and page number.
 exports.getSnippet = async(req, res, next) => {
   try {
     const DummyUserId = "68750b2cf55e1d0e1d7a1234";
@@ -29,6 +30,7 @@ exports.getSnippet = async(req, res, next) => {
   }
 };
 
+// Add new snippet.
 exports.postSnippet = async(req, res, next) => {
   try {
     const snippet = new Snippet({...req.body});
@@ -48,6 +50,7 @@ exports.postSnippet = async(req, res, next) => {
   }
 };
 
+// Search the snippet on tha basis of title, description and tags.
 exports.searchSnippet = async(req,res,next) => {
   try {
     const { q } = req.query;
@@ -76,6 +79,7 @@ exports.searchSnippet = async(req,res,next) => {
   }
 };
 
+// Search snippet on the basis of snippet id.
 exports.searchById = async(req,res,next) => {
   try {
     const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
@@ -123,6 +127,7 @@ exports.searchById = async(req,res,next) => {
   }
 }
 
+// Update an existing snippet using patch.
 exports.updateSnippet = async(req,res,next) => {
   try {
     const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
@@ -173,6 +178,46 @@ exports.updateSnippet = async(req,res,next) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update snippet",
+      error: err.message
+    })
+  }
+}
+
+exports.deleteSnippet = async(req,res,next) => {
+  try {
+    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const snippetId = req.params.id;
+    if(!mongoose.Types.ObjectId.isValid(snippetId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Snippet id is not valid"
+      })
+    }
+    const snippetToDelete = await Snippet.findById(snippetId);
+    if(!snippetToDelete) {
+      return res.status(404).json({
+        success: false,
+        message: "Snippet does not exist to delete"
+      })
+    }
+    if(snippetToDelete.userId.toString() === DUMMY_USER_ID) {
+      await snippetToDelete.deleteOne();
+      return res.status(200).json({
+        success: true,
+        message: "Snippet deleted successfully"
+      })
+    }
+    else {
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed to delete because owner is someone else"
+      })
+    }
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete snippet",
       error: err.message
     })
   }
