@@ -183,6 +183,7 @@ exports.updateSnippet = async(req,res,next) => {
   }
 }
 
+// Delete snippet by id.
 exports.deleteSnippet = async(req,res,next) => {
   try {
     const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
@@ -219,6 +220,46 @@ exports.deleteSnippet = async(req,res,next) => {
       success: false,
       message: "Failed to delete snippet",
       error: err.message
+    })
+  }
+}
+
+// Get list of unique tags for logged-in user.
+exports.getUniqueTags = async(req,res,next) => {
+  try {
+    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const tags = await Snippet.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(DUMMY_USER_ID)
+        }
+      },
+      {
+        $unwind: "$tags"
+      },
+      {
+        $group: {
+          _id:{
+            $toLower: "$tags"
+          }
+        }
+      },
+      {
+        $sort: {
+          _id: 1
+        }
+      }
+    ]);
+    const uniqueTags = tags.map((tag) => tag._id);
+    return res.status(200).json({
+      success: true,
+      data: uniqueTags
+    })
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get unique tags"
     })
   }
 }
