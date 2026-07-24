@@ -7,6 +7,12 @@ const snippetSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    collectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Collection",
+      default: null,
+      required: false
+    },
     title: {
       type: String,
       required: true,

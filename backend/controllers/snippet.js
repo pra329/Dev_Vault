@@ -1,5 +1,6 @@
-const { default: mongoose, mongo } = require("mongoose");
+const { default: mongoose } = require("mongoose");
 const Snippet = require("../models/snippet");
+const Collection = require("../models/collection");
 
 // Search snippet on the basis of language, type and page number.
 exports.getSnippet = async(req, res, next) => {
@@ -141,7 +142,28 @@ exports.updateSnippet = async(req,res,next) => {
     const snippetToUpdate = await Snippet.findById(snippetId);
     if(snippetToUpdate) {
       if(snippetToUpdate.userId.equals(DUMMY_USER_ID)) {
-        const {title, code, language, description, tags, type, errorMessage, cause, fixCode, isPublic} = req.body;
+        const {collectionId, title, code, language, description, tags, type, errorMessage, cause, fixCode, isPublic} = req.body;
+        if (collectionId !== undefined) {
+          if(collectionId !== null) {
+            if(!mongoose.Types.ObjectId.isValid(collectionId)) {
+              return res.status(400).json({
+                success: false,
+                message: "Invalid collection id"
+              })
+            }
+            const isExist = await Collection.findOne({
+              _id: collectionId,
+              userId: DUMMY_USER_ID
+            });
+            if(!isExist) {
+              return res.status(404).json({
+                success: false,
+                message: "Collection does not exist"
+            })
+            }
+          }
+          snippetToUpdate.collectionId = collectionId;
+        }
         if (title !== undefined) snippetToUpdate.title = title;
         if (code !== undefined) snippetToUpdate.code = code;
         if (language !== undefined) snippetToUpdate.language = language;
