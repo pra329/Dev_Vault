@@ -1,7 +1,8 @@
 const express = require('express');
 const dns = require('dns');
-const { snippetRouter } = require('./routes/snippet');
 const { userRouter } = require('./routes/user');
+const { snippetRouter } = require('./routes/snippet');
+const { collectionRouter } = require('./routes/collection');
 const { default: mongoose } = require('mongoose');
 const dotenv = require('dotenv');
 const Snippet = require('./models/snippet');
@@ -11,6 +12,7 @@ const app = express();
 app.use(express.json());
 app.use("/api", userRouter);
 app.use("/api", snippetRouter);
+app.use("/api", collectionRouter);
 
 
 dns.setServers([

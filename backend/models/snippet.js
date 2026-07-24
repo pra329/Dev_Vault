@@ -11,6 +11,7 @@ const snippetSchema = new mongoose.Schema(
       type: String,
       required: true,
       maxlength: 100,
+      trim: true
     },
     code: {
       type: String,
@@ -23,6 +24,7 @@ const snippetSchema = new mongoose.Schema(
     description: {
       type: String,
       default: "",
+      trim: true
     },
     tags: {
       type: [String],
