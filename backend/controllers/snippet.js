@@ -13,7 +13,7 @@ exports.getSnippet = async(req, res, next) => {
     const query = {userId: DummyUserId};
     if(language) query.language = language;
     if(type) query.type = type;
-    const snippets = await Snippet.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const snippets = await Snippet.find(query).populate("collectionId", "name description color icon").sort({ createdAt: -1 }).skip(skip).limit(limit);
     const totalSnippets = await Snippet.countDocuments(query);
     return res.status(200).json({
       success: true,
@@ -65,7 +65,7 @@ exports.searchSnippet = async(req,res,next) => {
       $text:{
         $search: q
       }
-    });
+    }).populate("collectionId", "name description color icon");
     return res.status(200).json({
       success: true,
       data: snippets
@@ -91,7 +91,7 @@ exports.searchById = async(req,res,next) => {
         message: "Invalid snippet ID",
       });
     }
-    const snippet = await Snippet.findById(id);
+    const snippet = await Snippet.findById(id).populate("collectionId", "name description icon color");
     if(!snippet) {
       return res.status(404).json({
         success: false,
