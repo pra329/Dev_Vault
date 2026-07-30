@@ -144,3 +144,51 @@ exports.updateCollection = async (req, res, next) => {
     });
   }
 };
+
+// Delete collection
+exports.deleteCollection = async(req, res, next) => {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const collectionId = req.params.id;
+    if(!mongoose.Types.ObjectId.isValid(collectionId)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: "Collection id is not valid"
+      })
+    }
+    const collectionToDelete = await Collection.findOne({
+      _id: collectionId,
+      userId: DUMMY_USER_ID
+    }).session(session);
+
+    if(!collectionToDelete) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Collection is not present in the database"
+      })
+    }
+    await Snippet.updateMany({collectionId: collectionId},{collectionId: null}, {session});
+    await collectionToDelete.deleteOne({session});
+    await session.commitTransaction();
+    session.endSession();
+    return res.status(200).json({
+      success: true,
+      message: "Collection deleted successfully"
+    })
+  }
+  catch(err) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(500).json({
+      success: false,
+      message: "Error occured while deleting the collection",
+      error: err.message
+    })
+  }
+}
