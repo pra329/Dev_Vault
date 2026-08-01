@@ -1,5 +1,7 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 
 // Register User To The Application.
 exports.registerUser = async (req, res, next) => {
@@ -38,3 +40,56 @@ exports.registerUser = async (req, res, next) => {
     });
   }
 };
+
+// Login User.
+exports.loginUser = async(req, res, next) => {
+    try {
+        const {email, password} = req.body;
+        if(!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "email and password are required"
+            })
+        }
+        const user = await User.findOne({email: email});
+        if(!user) {
+            return res.status(404).json({
+                success: false,
+                message: "Invalid email or password"
+            })
+        }
+        const passwordCheck = await bcrypt.compare(password, user.passwordHash);
+        if(!passwordCheck) {
+            return res.status(401).json({
+                success: false,
+                message: "Invali email or password"
+            })
+        }
+        const token = jwt.sign(
+            {
+                userId: user._id,
+                email: user.email
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
+        );
+        return res.status(200).json({
+            success: true,
+            token,
+            data: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        })
+    }
+    catch(err) {
+        return res.status(500).json({
+            success: false,
+            message: "Failed to login",
+            error: err.message
+        })
+    }
+}

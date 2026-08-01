@@ -10,9 +10,9 @@ const Snippet = require('./models/snippet');
 dotenv.config();
 const app = express();
 app.use(express.json());
-app.use("/api", userRouter);
+app.use("/api/auth", userRouter);
 app.use("/api", snippetRouter);
-app.use("/api/auth", collectionRouter);
+app.use("/api", collectionRouter);
 
 
 dns.setServers([
