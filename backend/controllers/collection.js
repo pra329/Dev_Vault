@@ -5,7 +5,7 @@ const Snippet = require("../models/snippet");
 // Add new collection
 exports.postCollection = async (req, res, next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     if (!req.body.name || req.body.name.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -14,7 +14,7 @@ exports.postCollection = async (req, res, next) => {
     }
     const newCollection = new Collection({
       ...req.body,
-      userId: DUMMY_USER_ID,
+      userId: userId,
     });
     const savedCollection = await newCollection.save();
     return res.status(201).json({
@@ -34,8 +34,8 @@ exports.postCollection = async (req, res, next) => {
 // List all collections owned by the logged-in-user
 exports.getCollections = async (req, res, next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
-    const collections = await Collection.find({ userId: DUMMY_USER_ID });
+    const userId = req.user.userId;
+    const collections = await Collection.find({ userId: userId });
     return res.status(200).json({
       success: true,
       message: "Collections fetched successfully",
@@ -53,7 +53,7 @@ exports.getCollections = async (req, res, next) => {
 // Get one collection plus all snippets inside it.
 exports.getCollectionByIdWithSnippets = async (req, res, next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const collectionId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(collectionId)) {
       return res.status(400).json({
@@ -63,7 +63,7 @@ exports.getCollectionByIdWithSnippets = async (req, res, next) => {
     }
     const collection = await Collection.findOne({
       _id: collectionId,
-      userId: DUMMY_USER_ID,
+      userId: userId,
     });
     if (!collection) {
       return res.status(404).json({
@@ -73,7 +73,7 @@ exports.getCollectionByIdWithSnippets = async (req, res, next) => {
     }
     const snippets = await Snippet.find({
       collectionId: collectionId,
-      userId: DUMMY_USER_ID,
+      userId: userId,
     }).select(
       "title code language description tags type errorMessage cause fixCode isPublic likes copyCount createdAt updatedAt",
     );
@@ -97,7 +97,7 @@ exports.getCollectionByIdWithSnippets = async (req, res, next) => {
 // Update collection
 exports.updateCollection = async (req, res, next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const collectionId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(collectionId)) {
       return res.status(400).json({
@@ -107,7 +107,7 @@ exports.updateCollection = async (req, res, next) => {
     }
     const collectionToUpdate = await Collection.findOne({
       _id: collectionId,
-      userId: DUMMY_USER_ID,
+      userId: userId,
     });
     if (collectionToUpdate) {
       const { name, description, color, icon } = req.body;
@@ -150,7 +150,7 @@ exports.deleteCollection = async(req, res, next) => {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const collectionId = req.params.id;
     if(!mongoose.Types.ObjectId.isValid(collectionId)) {
       await session.abortTransaction();
@@ -162,7 +162,7 @@ exports.deleteCollection = async(req, res, next) => {
     }
     const collectionToDelete = await Collection.findOne({
       _id: collectionId,
-      userId: DUMMY_USER_ID
+      userId: userId
     }).session(session);
 
     if(!collectionToDelete) {

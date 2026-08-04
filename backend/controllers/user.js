@@ -1,7 +1,6 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
 
 // Register User To The Application.
 exports.registerUser = async (req, res, next) => {
@@ -53,7 +52,7 @@ exports.loginUser = async(req, res, next) => {
         }
         const user = await User.findOne({email: email});
         if(!user) {
-            return res.status(404).json({
+            return res.status(401).json({
                 success: false,
                 message: "Invalid email or password"
             })
@@ -62,13 +61,13 @@ exports.loginUser = async(req, res, next) => {
         if(!passwordCheck) {
             return res.status(401).json({
                 success: false,
-                message: "Invali email or password"
+                message: "Invalid email or password"
             })
         }
         const token = jwt.sign(
             {
-                userId: user._id,
-                email: user.email
+              userId: user._id,
+              email: user.email
             },
             process.env.JWT_SECRET,
             {

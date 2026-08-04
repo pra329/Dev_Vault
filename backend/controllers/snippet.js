@@ -5,12 +5,12 @@ const Collection = require("../models/collection");
 // Search snippet on the basis of language, type and page number.
 exports.getSnippet = async(req, res, next) => {
   try {
-    const DummyUserId = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const { language, type } = req.query;
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = 10;
     const skip = (page - 1) * limit;
-    const query = {userId: DummyUserId};
+    const query = {userId: userId};
     if(language) query.language = language;
     if(type) query.type = type;
     const snippets = await Snippet.find(query).populate("collectionId", "name description color icon").sort({ createdAt: -1 }).skip(skip).limit(limit);
@@ -34,7 +34,24 @@ exports.getSnippet = async(req, res, next) => {
 // Add new snippet.
 exports.postSnippet = async(req, res, next) => {
   try {
-    const snippet = new Snippet({...req.body});
+    const userId = req.user.userId;
+    const { collectionId } = req.body;
+    if(collectionId) {
+      const collection = await Collection.findById(collectionId);
+      if(!collection) {
+        return res.status(404).json({
+          success: false,
+          message: "Collection does not exist"
+        })
+      }
+      if(collection.userId.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Collection belongs to someone else"
+        })
+      }
+    }
+    const snippet = new Snippet({...req.body, userId});
     const savedSnippet = await snippet.save();
     return res.status(201).json({
         success: true,
@@ -54,14 +71,16 @@ exports.postSnippet = async(req, res, next) => {
 // Search the snippet on tha basis of title, description and tags.
 exports.searchSnippet = async(req,res,next) => {
   try {
+    const userId = req.user.userId;
     const { q } = req.query;
-    if(!q) {
+    if(!q || q.trim() === "") {
       return res.status(400).json({
         success: false,
         message: "Search query is required"
       });
     }
     const snippets = await Snippet.find({
+      userId: userId,
       $text:{
         $search: q
       }
@@ -83,7 +102,7 @@ exports.searchSnippet = async(req,res,next) => {
 // Search snippet on the basis of snippet id.
 exports.searchById = async(req,res,next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user?.userId;
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -105,7 +124,7 @@ exports.searchById = async(req,res,next) => {
       })
     }
     else {
-      if(DUMMY_USER_ID === snippet.userId.toString()) {
+      if(userId === snippet.userId.toString()) {
         return res.status(200).json({
           success: true,
           data: snippet
@@ -114,7 +133,7 @@ exports.searchById = async(req,res,next) => {
       else {
         return res.status(403).json({
           success: false,
-          message: "Can not return snippet because owner is someone else",
+          message: "You are not authorized to view this snippet"
         })
       }
     }
@@ -131,7 +150,7 @@ exports.searchById = async(req,res,next) => {
 // Update an existing snippet using patch.
 exports.updateSnippet = async(req,res,next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const snippetId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(snippetId)) {
       return res.status(400).json({
@@ -141,7 +160,7 @@ exports.updateSnippet = async(req,res,next) => {
     }
     const snippetToUpdate = await Snippet.findById(snippetId);
     if(snippetToUpdate) {
-      if(snippetToUpdate.userId.equals(DUMMY_USER_ID)) {
+      if(snippetToUpdate.userId.equals(userId)) {
         const {collectionId, title, code, language, description, tags, type, errorMessage, cause, fixCode, isPublic} = req.body;
         if (collectionId !== undefined) {
           if(collectionId !== null) {
@@ -153,7 +172,7 @@ exports.updateSnippet = async(req,res,next) => {
             }
             const isExist = await Collection.findOne({
               _id: collectionId,
-              userId: DUMMY_USER_ID
+              userId: userId
             });
             if(!isExist) {
               return res.status(404).json({
@@ -208,7 +227,7 @@ exports.updateSnippet = async(req,res,next) => {
 // Delete snippet by id.
 exports.deleteSnippet = async(req,res,next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const snippetId = req.params.id;
     if(!mongoose.Types.ObjectId.isValid(snippetId)) {
       return res.status(400).json({
@@ -216,26 +235,18 @@ exports.deleteSnippet = async(req,res,next) => {
         message: "Snippet id is not valid"
       })
     }
-    const snippetToDelete = await Snippet.findById(snippetId);
+    const snippetToDelete = await Snippet.findOne({_id: snippetId, userId});
     if(!snippetToDelete) {
       return res.status(404).json({
         success: false,
-        message: "Snippet does not exist to delete"
+        message: "Snippet not found"
       })
     }
-    if(snippetToDelete.userId.toString() === DUMMY_USER_ID) {
-      await snippetToDelete.deleteOne();
-      return res.status(200).json({
-        success: true,
-        message: "Snippet deleted successfully"
-      })
-    }
-    else {
-      return res.status(403).json({
-        success: false,
-        message: "Not allowed to delete because owner is someone else"
-      })
-    }
+    await snippetToDelete.deleteOne();
+    return res.status(200).json({
+      success: true,
+      message: "Snippet deleted successfully"
+    })
   }
   catch(err) {
     return res.status(500).json({
@@ -249,11 +260,11 @@ exports.deleteSnippet = async(req,res,next) => {
 // Get list of unique tags for logged-in user.
 exports.getUniqueTags = async(req,res,next) => {
   try {
-    const DUMMY_USER_ID = "68750b2cf55e1d0e1d7a1234";
+    const userId = req.user.userId;
     const tags = await Snippet.aggregate([
       {
         $match: {
-          userId: new mongoose.Types.ObjectId(DUMMY_USER_ID)
+          userId: new mongoose.Types.ObjectId(userId)
         }
       },
       {
