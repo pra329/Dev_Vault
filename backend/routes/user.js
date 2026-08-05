@@ -3,14 +3,10 @@ const userRouter = express.Router();
 const { registerUser } = require('../controllers/user');
 const { loginUser } = require('../controllers/user'); 
 const { auth } = require('../middleware/auth');
+const { currentUser } = require('../controllers/user');
 
 userRouter.post('/register', registerUser);
 userRouter.post('/login', loginUser);
-userRouter.get("/test", auth, (req, res) => {
-    return res.status(200).json({
-        success: true,
-        user: req.user
-    });
-});
+userRouter.get('/me', auth, currentUser);
 
 exports.userRouter = userRouter;

@@ -92,3 +92,23 @@ exports.loginUser = async(req, res, next) => {
         })
     }
 }
+
+// Return The Details Of Currently Logged In User.
+exports.currentUser = async(req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("-passwordHash -__v").
+    populate("starred", "title description language tags type");
+    return res.status(200).json({
+      success: true,
+      data: user
+    })
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch details of currently logged in user",
+      error: err.message
+    })
+  }
+}
