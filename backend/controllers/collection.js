@@ -1,16 +1,14 @@
 const { default: mongoose } = require("mongoose");
 const Collection = require("../models/collection");
 const Snippet = require("../models/snippet");
+const AppError = require("../utils/appError");
 
 // Add new collection
 exports.postCollection = async (req, res, next) => {
   try {
     const userId = req.user.userId;
     if (!req.body.name || req.body.name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Name of collection can not be empty",
-      });
+      return next(new AppError("Name of collection can not be empty", 400));
     }
     const newCollection = new Collection({
       ...req.body,
@@ -23,11 +21,7 @@ exports.postCollection = async (req, res, next) => {
       data: savedCollection,
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create new collection",
-      error: err.message,
-    });
+    return next(err);
   }
 };
 
@@ -42,11 +36,7 @@ exports.getCollections = async (req, res, next) => {
       data: collections,
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch collections",
-      error: err.message,
-    });
+    return next(err);
   }
 };
 
@@ -56,20 +46,14 @@ exports.getCollectionByIdWithSnippets = async (req, res, next) => {
     const userId = req.user.userId;
     const collectionId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(collectionId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Collection Id is invalid",
-      });
+      return next(new AppError("Collection Id is invalid", 400));
     }
     const collection = await Collection.findOne({
       _id: collectionId,
       userId: userId,
     });
     if (!collection) {
-      return res.status(404).json({
-        success: false,
-        message: "Collection is not present in the database",
-      });
+      return next(new AppError("Collection is not present in the database", 404));
     }
     const snippets = await Snippet.find({
       collectionId: collectionId,
@@ -86,11 +70,7 @@ exports.getCollectionByIdWithSnippets = async (req, res, next) => {
       data: collectionWithSnippets,
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch collection by id with snippets",
-      error: err.message,
-    });
+    return next(err);
   }
 };
 
@@ -100,10 +80,7 @@ exports.updateCollection = async (req, res, next) => {
     const userId = req.user.userId;
     const collectionId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(collectionId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Collection Id is invalid",
-      });
+      return next(new AppError("Collection Id is invalid", 400));
     }
     const collectionToUpdate = await Collection.findOne({
       _id: collectionId,
@@ -113,10 +90,7 @@ exports.updateCollection = async (req, res, next) => {
       const { name, description, color, icon } = req.body;
       if (name !== undefined) {
         if (name.trim() === "") {
-          return res.status(400).json({
-            success: false,
-            message: "collection name can not be empty",
-          });
+          return next(new AppError("Collection name can not be empty", 400));
         }
         collectionToUpdate.name = name;
       }
@@ -131,17 +105,10 @@ exports.updateCollection = async (req, res, next) => {
         data: savedCollection,
       });
     } else {
-      return res.status(404).json({
-        success: false,
-        message: "Colletion is not present in the database",
-      });
+      return next(new AppError("Colletion is not present in the database", 404));
     }
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update a collection",
-      error: err.message,
-    });
+    return next(err);
   }
 };
 
@@ -155,10 +122,7 @@ exports.deleteCollection = async(req, res, next) => {
     if(!mongoose.Types.ObjectId.isValid(collectionId)) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: "Collection id is not valid"
-      })
+      return next(new AppError("Collection id is not valid", 400));
     }
     const collectionToDelete = await Collection.findOne({
       _id: collectionId,
@@ -168,10 +132,7 @@ exports.deleteCollection = async(req, res, next) => {
     if(!collectionToDelete) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({
-        success: false,
-        message: "Collection is not present in the database"
-      })
+      return next(new AppError("Collection is not present in the database", 404));
     }
     await Snippet.updateMany({collectionId: collectionId},{collectionId: null}, {session});
     await collectionToDelete.deleteOne({session});
@@ -185,10 +146,6 @@ exports.deleteCollection = async(req, res, next) => {
   catch(err) {
     await session.abortTransaction();
     session.endSession();
-    return res.status(500).json({
-      success: false,
-      message: "Error occured while deleting the collection",
-      error: err.message
-    })
+    return next(err);
   }
 }

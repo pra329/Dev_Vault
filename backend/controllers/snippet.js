@@ -1,6 +1,7 @@
 const { default: mongoose } = require("mongoose");
 const Snippet = require("../models/snippet");
 const Collection = require("../models/collection");
+const AppError = require("../utils/appError");
 
 // Search snippet on the basis of language, type and page number.
 exports.getSnippet = async(req, res, next) => {
@@ -24,10 +25,7 @@ exports.getSnippet = async(req, res, next) => {
     })
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    })
+    return next(err);
   }
 };
 
@@ -39,16 +37,10 @@ exports.postSnippet = async(req, res, next) => {
     if(collectionId) {
       const collection = await Collection.findById(collectionId);
       if(!collection) {
-        return res.status(404).json({
-          success: false,
-          message: "Collection does not exist"
-        })
+        return next(new AppError("Collection does not exist", 404));
       }
       if(collection.userId.toString() !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: "Collection belongs to someone else"
-        })
+        return next(new AppError("Collection belongs to someone else", 403));
       }
     }
     const snippet = new Snippet({...req.body, userId});
@@ -60,11 +52,7 @@ exports.postSnippet = async(req, res, next) => {
     });
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create snippet",
-      error: err.message
-    })
+    return next(err);
   }
 };
 
@@ -74,10 +62,7 @@ exports.searchSnippet = async(req,res,next) => {
     const userId = req.user.userId;
     const { q } = req.query;
     if(!q || q.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Search query is required"
-      });
+      return next(new AppError("Search query is required", 400));
     }
     const snippets = await Snippet.find({
       userId: userId,
@@ -91,11 +76,7 @@ exports.searchSnippet = async(req,res,next) => {
     });
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to search snippets",
-      error: err.message
-    })
+    return next(err);
   }
 };
 
@@ -105,17 +86,11 @@ exports.searchById = async(req,res,next) => {
     const userId = req.user?.userId;
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid snippet ID",
-      });
+      return next(new AppError("Invalid snippet ID", 400));
     }
     const snippet = await Snippet.findById(id).populate("collectionId", "name description icon color");
     if(!snippet) {
-      return res.status(404).json({
-        success: false,
-        message: "Snippet does not found"
-      });
+      return next(new AppError("Snippet does not found", 404));
     }
     if(snippet.isPublic) {
       return res.status(200).json({
@@ -131,19 +106,12 @@ exports.searchById = async(req,res,next) => {
         });
       }
       else {
-        return res.status(403).json({
-          success: false,
-          message: "You are not authorized to view this snippet"
-        })
+        return next(new AppError("You are not authorized to view this snippet", 403));
       }
     }
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch snippet by id",
-      error: err.message
-    })
+    return next(err);
   }
 }
 
@@ -153,10 +121,7 @@ exports.updateSnippet = async(req,res,next) => {
     const userId = req.user.userId;
     const snippetId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(snippetId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid snippet ID",
-      });
+      return next(new AppError("Invalid snippet ID", 400));
     }
     const snippetToUpdate = await Snippet.findById(snippetId);
     if(snippetToUpdate) {
@@ -165,20 +130,14 @@ exports.updateSnippet = async(req,res,next) => {
         if (collectionId !== undefined) {
           if(collectionId !== null) {
             if(!mongoose.Types.ObjectId.isValid(collectionId)) {
-              return res.status(400).json({
-                success: false,
-                message: "Invalid collection id"
-              })
+              return next(new AppError("Invalid collection Id", 400));
             }
             const isExist = await Collection.findOne({
               _id: collectionId,
               userId: userId
             });
             if(!isExist) {
-              return res.status(404).json({
-                success: false,
-                message: "Collection does not exist"
-            })
+              return next(new AppError("Collection does not exist", 404));
             }
           }
           snippetToUpdate.collectionId = collectionId;
@@ -202,25 +161,15 @@ exports.updateSnippet = async(req,res,next) => {
         })
       }
       else {
-        return res.status(403).json({
-          success: false,
-          message: "Not allowed to update because owner is someone else"
-        })
+        return next(new AppError("Not allowed to update because owner is someone else", 403));
       }
     }
     else {
-      return res.status(404).json({
-        success: false,
-        message: "Snippet you want to update does not exist"
-      })
+      return next(new AppError("Snippet you want to update does not exist", 404));
     }
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update snippet",
-      error: err.message
-    })
+    return next(err);
   }
 }
 
@@ -230,17 +179,11 @@ exports.deleteSnippet = async(req,res,next) => {
     const userId = req.user.userId;
     const snippetId = req.params.id;
     if(!mongoose.Types.ObjectId.isValid(snippetId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Snippet id is not valid"
-      })
+      return next(new AppError("Snippet id is not valid", 400));
     }
     const snippetToDelete = await Snippet.findOne({_id: snippetId, userId});
     if(!snippetToDelete) {
-      return res.status(404).json({
-        success: false,
-        message: "Snippet not found"
-      })
+      return next(new AppError("Snippet not found", 404));
     }
     await snippetToDelete.deleteOne();
     return res.status(200).json({
@@ -249,11 +192,7 @@ exports.deleteSnippet = async(req,res,next) => {
     })
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete snippet",
-      error: err.message
-    })
+    return next(err);
   }
 }
 
@@ -290,9 +229,6 @@ exports.getUniqueTags = async(req,res,next) => {
     })
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to get unique tags"
-    })
+    return next(err);
   }
 }

@@ -7,6 +7,7 @@ const { default: mongoose } = require('mongoose');
 const dotenv = require('dotenv');
 const Snippet = require('./models/snippet');
 const cookieParser = require('cookie-parser');
+const { errorHandler } = require('./middleware/errorHandler');
 
 dotenv.config();
 const app = express();
@@ -15,7 +16,7 @@ app.use(cookieParser());
 app.use("/api/auth", userRouter);
 app.use("/api", snippetRouter);
 app.use("/api", collectionRouter);
-
+app.use(errorHandler);
 
 dns.setServers([
     '1.1.1.1',

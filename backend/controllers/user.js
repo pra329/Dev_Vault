@@ -1,25 +1,20 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
+const AppError = require("../utils/appError");
 
 // Register User To The Application.
 exports.registerUser = async (req, res, next) => {
   try {
     const {name, email, password} = req.body;
     if (!name?.trim() || !email?.trim() || !password?.trim() || password.trim().length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "All the fields are required and password must be at least 8 characters long",
-      });
+      return next(new AppError("All the fields are required and password must be at least 8 characters long", 400));
     }
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
     const isUserExist = await User.findOne({ email: trimmedEmail });
     if (isUserExist) {
-      return res.status(409).json({
-        success: false,
-        message: "User alredy exist you want to register",
-      });
+      return next(new AppError("User alredy exist you want to register", 409));
     }
     const passwordHash = await bcrypt.hash(password.trim(), 10);
     const user = new User({name: trimmedName, email: trimmedEmail, passwordHash});
@@ -34,11 +29,7 @@ exports.registerUser = async (req, res, next) => {
       }
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create user",
-      error: err.message,
-    });
+    return next(err);
   }
 };
 
@@ -47,24 +38,15 @@ exports.loginUser = async(req, res, next) => {
     try {
         const {email, password} = req.body;
         if(!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "email and password are required"
-            })
+            return next(new AppError("email and password are required", 400));
         }
         const user = await User.findOne({email: email});
         if(!user) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid email or password"
-            })
+            return next(new AppError("User not found either invalid email or password", 401));
         }
         const passwordCheck = await bcrypt.compare(password, user.passwordHash);
         if(!passwordCheck) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid email or password"
-            })
+            return next(new AppError("Invalid email or password", 401));
         }
         const token = jwt.sign(
             {
@@ -87,11 +69,7 @@ exports.loginUser = async(req, res, next) => {
         })
     }
     catch(err) {
-        return res.status(500).json({
-            success: false,
-            message: "Failed to login",
-            error: err.message
-        })
+        return next(err);
     }
 }
 
@@ -107,11 +85,7 @@ exports.currentUser = async(req, res, next) => {
     })
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch details of currently logged in user",
-      error: err.message
-    })
+    return next(err);
   }
 }
 
@@ -123,31 +97,23 @@ exports.changePassword = async(req, res, next) => {
     const trimmedCurrentPassword = currentPassword?.trim();
     const trimmedNewPassword = newPassword?.trim();
     if(!trimmedCurrentPassword || !trimmedNewPassword || trimmedNewPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "Current password and new password are required, and the new password must be at least 8 characters long"
-      })
+      return next(
+        new AppError("Current password and new password are required, and the new password must be at least 8 characters long",
+          400
+        )
+      )
     }
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return next(new AppError("User not found", 404));
     }
     const passwordCheck = await bcrypt.compare(trimmedCurrentPassword, user.passwordHash);
     if(!passwordCheck) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid current password"
-      })
+      return next(new AppError("Invalid current password", 401));
     }
     const isSamePassword = await bcrypt.compare(trimmedNewPassword, user.passwordHash);
     if(isSamePassword) {
-      return res.status(400).json({
-        success: false,
-        message: "New password can not be same as the old password"
-      })
+      return next(new AppError("New password can not be same as the old password", 400));
     }
     const passwordHash = await bcrypt.hash(trimmedNewPassword, 10);
     user.passwordHash = passwordHash;
@@ -158,10 +124,6 @@ exports.changePassword = async(req, res, next) => {
     })
   }
   catch(err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to change password",
-      error: err.message
-    })
+    return next(err);
   }
 }
