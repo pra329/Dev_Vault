@@ -6,21 +6,23 @@ const jwt = require('jsonwebtoken');
 exports.registerUser = async (req, res, next) => {
   try {
     const {name, email, password} = req.body;
-    const isUserExist = await User.findOne({ email: email });
+    if (!name?.trim() || !email?.trim() || !password?.trim() || password.trim().length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "All the fields are required and password must be at least 8 characters long",
+      });
+    }
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    const isUserExist = await User.findOne({ email: trimmedEmail });
     if (isUserExist) {
       return res.status(409).json({
         success: false,
         message: "User alredy exist you want to register",
       });
     }
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All the fields are required",
-      });
-    }
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = new User({name, email, passwordHash});
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const user = new User({name: trimmedName, email: trimmedEmail, passwordHash});
     const savedUser = await user.save();
     return res.status(201).json({
       success: true,
@@ -108,6 +110,57 @@ exports.currentUser = async(req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch details of currently logged in user",
+      error: err.message
+    })
+  }
+}
+
+// Change Password
+exports.changePassword = async(req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const {currentPassword, newPassword} = req.body;
+    const trimmedCurrentPassword = currentPassword?.trim();
+    const trimmedNewPassword = newPassword?.trim();
+    if(!trimmedCurrentPassword || !trimmedNewPassword || trimmedNewPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required, and the new password must be at least 8 characters long"
+      })
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    const passwordCheck = await bcrypt.compare(trimmedCurrentPassword, user.passwordHash);
+    if(!passwordCheck) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid current password"
+      })
+    }
+    const isSamePassword = await bcrypt.compare(trimmedNewPassword, user.passwordHash);
+    if(isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password can not be same as the old password"
+      })
+    }
+    const passwordHash = await bcrypt.hash(trimmedNewPassword, 10);
+    user.passwordHash = passwordHash;
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
+    })
+  }
+  catch(err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to change password",
       error: err.message
     })
   }
