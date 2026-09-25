@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const Snippet = require("../models/snippet");
 const AppError = require("../utils/appError");
 
@@ -93,3 +94,50 @@ exports.getPublicSnippets = async (req, res, next) => {
     return next(err);
   }
 };
+
+exports.toggleLike = async(req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const snippetId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(snippetId)) {
+      return next(new AppError("Snippet Id is invalid", 400));
+    }
+    const snippet = await Snippet.findById(snippetId);
+    if(!snippet) {
+      return next(new AppError("Snippet not found", 404));
+    }
+    if(!snippet.isPublic) {
+      return next(new AppError("You can not like the private snippet", 403));
+    }
+    const alredyLiked = snippet.likes.some((id) => {
+      return id.toString() === userId.toString();
+    })
+    let updatedSnippet;
+    if(alredyLiked) {
+      updatedSnippet = await Snippet.findByIdAndUpdate(
+        snippetId,
+        {
+          $pull: {likes: userId}
+        },
+        {returnDocument: 'after'}
+      );
+    }
+    else {
+      updatedSnippet = await Snippet.findByIdAndUpdate(
+        snippetId,
+        {
+          $addToSet: {likes: userId}
+        },
+        {returnDocument: 'after'}
+      );
+    }
+    return res.status(200).json({
+      success: true,
+      liked: !alredyLiked,
+      likeCount: updatedSnippet.likes.length
+    });
+  }
+  catch(err) {
+    return next(err);
+  }
+}
