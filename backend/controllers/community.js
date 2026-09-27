@@ -1,5 +1,6 @@
 const { default: mongoose } = require("mongoose");
 const Snippet = require("../models/snippet");
+const User = require('../models/user');
 const AppError = require("../utils/appError");
 
 exports.getPublicSnippets = async (req, res, next) => {
@@ -136,6 +137,55 @@ exports.toggleLike = async(req, res, next) => {
       liked: !alredyLiked,
       likeCount: updatedSnippet.likes.length
     });
+  }
+  catch(err) {
+    return next(err);
+  }
+}
+
+exports.toggleStar = async(req ,res, next) => {
+  try {
+    const userId = req.user.userId;
+    const snippetId = req.params.id;
+    if(!mongoose.Types.ObjectId.isValid(snippetId)) {
+      return next(new AppError("Snippet Id is not valid", 400));
+    }
+    const snippet = await Snippet.findById(snippetId);
+    if(!snippet) {
+      return next(new AppError("Snippet does not exist", 404));
+    }
+    if(!snippet.isPublic) {
+      return next(new AppError("Snippet can not be starred it is private", 403));
+    }
+    const user = await User.findById(userId).select("starred");
+    if(!user) {
+      return next(new AppError("User does not exist", 404));
+    }
+    const isStarred = user.starred.some(id => id.toString() === snippetId);
+    let updatedUser;
+    if(isStarred) {
+      updatedUser = await User.findByIdAndUpdate(
+        userId,
+        {
+          $pull: {starred: snippetId}
+        },
+        {returnDocument: 'after'}
+      );
+    }
+    else {
+      updatedUser = await User.findByIdAndUpdate(
+        userId,
+        {
+          $addToSet: {starred: snippetId}
+        },
+        {returnDocument: 'after'}
+      );
+    }
+    return res.status(200).json({
+      success: true,
+      starred: !isStarred,
+      starredCount: updatedUser.starred.length
+    })
   }
   catch(err) {
     return next(err);
