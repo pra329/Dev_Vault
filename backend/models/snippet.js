@@ -67,10 +67,12 @@ const snippetSchema = new mongoose.Schema(
             ref: "User"
         },
     ],
-    copyCount: {
-      type: Number,
-      default: 0,
-    },
+    copiedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      }
+    ]
   },
   {
     timestamps: true,

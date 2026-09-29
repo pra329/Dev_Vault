@@ -191,3 +191,43 @@ exports.toggleStar = async(req ,res, next) => {
     return next(err);
   }
 }
+
+exports.incrementCopy = async(req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const snippetId = req.params.id;
+    if(!mongoose.Types.ObjectId.isValid(snippetId)) {
+      return next(new AppError("Snippet Id is not valid", 400));
+    }
+    const snippet = await Snippet.findById(snippetId);
+    if(!snippet) {
+      return next(new AppError("Snippet does not exist", 404));
+    }
+    if(!snippet.isPublic) {
+      return next(new AppError("Snippet can not be copies it is private", 403));
+    }
+    const isCopied = snippet.copiedBy.some(id => id.toString() === userId.toString());
+    if(isCopied) {
+      return res.status(200).json({
+        success: true,
+        copied: false,
+        copyCount: snippet.copiedBy.length
+      })
+    }
+    let updatedSnippet = await Snippet.findByIdAndUpdate(
+      snippetId,
+      {
+        $addToSet: {copiedBy: userId}
+      },
+      {returnDocument: 'after'}
+    )
+    return res.status(200).json({
+      success: true,
+      copied: true,
+      copyCount: updatedSnippet.copiedBy.length
+    })
+  }
+  catch(err) {
+    return next(err);
+  }
+}
