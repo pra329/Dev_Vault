@@ -1,16 +1,17 @@
+const dotenv = require('dotenv');
+dotenv.config();
 const express = require('express');
 const dns = require('dns');
 const { userRouter } = require('./routes/user');
 const { snippetRouter } = require('./routes/snippet');
 const { collectionRouter } = require('./routes/collection');
 const { default: mongoose } = require('mongoose');
-const dotenv = require('dotenv');
 const Snippet = require('./models/snippet');
 const cookieParser = require('cookie-parser');
 const { errorHandler } = require('./middleware/errorHandler');
 const { communityRouter } = require('./routes/community');
+const { aiRouter } = require('./routes/ai');
 
-dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
@@ -18,6 +19,7 @@ app.use("/api/auth", userRouter);
 app.use("/api", snippetRouter);
 app.use("/api", collectionRouter);
 app.use("/api", communityRouter);
+app.use("/api/ai", aiRouter)
 app.use(errorHandler);
 
 dns.setServers([
